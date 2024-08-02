@@ -77,7 +77,10 @@ async fn handle_connection(conn: Connection) {
                 let mut palette: Vec<NbtTag> = Vec::new();
 
                 let mut fields: HashMap<String, NbtTag> = HashMap::new();
-                fields.insert(String::from("name"), NbtTag::String(String::from("minecraft:air")));
+                fields.insert(String::from("name"), NbtTag::String(String::from("minecraft:stone")));
+                fields.insert(String::from("data"), NbtTag::Int32(0));
+                fields.insert(String::from("runtimeID"), NbtTag::Int32(1));
+                fields.insert(String::from("id"), NbtTag::Int32(1));
 
                 let compound = NbtTag::Compound(fields);
                 palette.push(compound);
@@ -91,19 +94,27 @@ async fn handle_connection(conn: Connection) {
                 let mut chunk_serialized_data: Vec<u8> = Vec::new();
                 chunk_serialized_data.push(8); // format version 8
                 chunk_serialized_data.push(1); // only 1 storage (further ones are used for water)
+                chunk_serialized_data.push(0); // subchunk absolute index
                 chunk_serialized_data.extend_from_slice(&storage.encode(true));
 
                 let chunk_packet = LevelChunkPacket {
                     chunk_position: ChunkPos::new(0, 0),
                     dimension_id: VAR::<i32>::new(0),
-                    sub_chunk_count: VAR::<u32>::new(1),
+                    sub_chunk_count: VAR::<u32>::new(3),
                     cache_enabled: false,
                     serialized_chunk_data: chunk_serialized_data,
                     client_needs_to_request_subchunks: false,
                     client_request_subchunk_limit: VAR::new(0xFFFFFFFFu32 as i32)
                 };
 
-                shard.send(GamePacket::LevelChunk(chunk_packet)).await.unwrap();
+                let mut bytes: Vec<u8> = Vec::new();
+                GamePacket::LevelChunk(chunk_packet).pk_serialize(&mut bytes).unwrap();
+                println!("{bytes:?}");
+
+                // shard.send(GamePacket::LevelChunk(chunk_packet)).await.unwrap();
+            }
+            GamePacket::PlayerAction(packet) => {
+
             }
             _ => {
                 println!("unhandled {:?}", game_packet);
@@ -111,3 +122,4 @@ async fn handle_connection(conn: Connection) {
         }
     }
 }
+
